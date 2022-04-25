@@ -1,4 +1,4 @@
-import {
+import type {
   Handler,
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
@@ -7,25 +7,6 @@ import { Web3Storage } from "web3.storage";
 import fetch from "node-fetch";
 type LambdaHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
 import { create } from "ipfs-http-client";
-
-const IPFS_API = "https://cloudflare-ipfs.com/";
-
-const token =
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJkaWQ6ZXRocjoweDFFRDVBRTVEYUJGRjlCQzVEOTUzQjRhNTdFRUUwYzI0MDYzMDdGNEYiLCJpc3MiOiJ3ZWIzLXN0b3JhZ2UiLCJpYXQiOjE2NTA3MTcxNzQ0NjQsIm5hbWUiOiJyYXJpdHlwZnMifQ.u15qnbxjsUTNLI11wPH8Nlhjymg8jGWZjvtcIXhp3LI";
-
-const client = new Web3Storage({ token });
-
-async function retrieveFiles() {
-  const cid = "QmdJ8S7YfZmXQJYdieyHJhNpAUnqQ8KEQsgZ4EAdwYk7tx";
-  const res = await client.get(cid);
-  console.log(res);
-
-  const files = await res.files();
-
-  for (const file of files) {
-    console.log(`${file.cid}: ${file.name} (${file.size} bytes)`);
-  }
-}
 
 async function fetchToken(id) {
   try {
@@ -45,23 +26,37 @@ export const handler: LambdaHandler = async (event, context) => {
   for (let x = 1; x < 3; x++) {
     const tmpList = [];
 
-    for (let i = x * 100; i < x * 100 + 100; i++) {
-      console.log(i);
+    for (let i = x * 20; i < x * 20 + 20; i++) {
       tmpList.push(fetchToken(i));
     }
 
     promiseList.push(...tmpList);
-    console.log(tmpList);
     sleep(2000);
   }
 
   const res = await Promise.all(promiseList);
 
-  console.log("res", res);
+  const traits = await traitsListing(res);
+  console.log(traits);
+
+  // compare token #1
+  const token1 = await compare(res[0].attributes);
+
+  console.log(token1);
+
+  const averageRar = averageRarity(res[0].attributes);
+
+  console.log({ averageRar });
+
+  const rarestTrait = rarestTraitCheck(res[0].attributes);
+  console.log({ rarestTrait });
+
+  const statRar = statisticalRarity();
+  console.log({ statRar });
 
   return {
     statusCode: 200,
-    body: JSON.stringify({ data: res }),
+    body: JSON.stringify({ data: traits }),
   };
 };
 
@@ -69,13 +64,126 @@ function sleep(ms) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function getLinks(ipfsPath) {
-  const url = "https://cloudflare-ipfs.com/";
-  const ipfs = create({ url });
+//supply need to be based on ipfs folder files number
+const supply = 5555;
+const id = 133;
+const fullToken = [];
 
-  const links = [];
-  for await (const link of ipfs.ls(ipfsPath)) {
-    links.push(link);
-  }
-  console.log(links);
+let collectionTraits = {};
+//traitsListing() is looping onver an entire folder, based on supply.
+async function traitsListing(tokenTraits) {
+  let traitsTypes = []; // ie "background"
+  let traitsValue = []; // ie "awesome background"
+
+  //to do: replace fs per fetch
+  tokenTraits.forEach((trait) =>
+    trait.attributes.forEach((element) => {
+      traitsTypes.push(element.trait_type);
+      traitsValue.push(element.value);
+    })
+  );
+
+  //turning array into a map
+  const map = traitsValue.reduce(
+    (acc, e) => acc.set(e, (acc.get(e) || 0) + 1),
+    new Map()
+  );
+
+  //sorting traits per vlaue
+  const uniqueTraitsValues = Array.from(map.entries());
+  uniqueTraitsValues.sort(function (a, b) {
+    return a[1] - b[1];
+  });
+
+  //creating an object for the entire collection using traits as Keys and rarity % as value
+  uniqueTraitsValues.forEach((element) => {
+    collectionTraits[`${element[0]}`] = ((100 * element[1]) / supply).toFixed(
+      2
+    );
+  });
+
+  return collectionTraits;
 }
+
+let tokenTraits = {};
+let fullTokenTraits = [];
+
+//tokenProperties will contain the traits values as keys and their rarity % according to collectionTraits value
+
+let traitsArray = [];
+
+async function compare(tokenTraits) {
+  console.log({ tokenTraits });
+  // copy
+  const newTraits = [...tokenTraits];
+
+  for (const property of newTraits) {
+    property.trait_rarity = collectionTraits[property.value];
+  }
+  return newTraits;
+}
+
+let averageRarityScore = 1;
+let tokenTraitsPercent = [];
+
+function averageRarity(tokenProperties) {
+  //simple funct to calculate array mean
+  function numAverage(a) {
+    var b = a.length,
+      c = 0,
+      i;
+    for (i = 0; i < b; i++) {
+      c += Number(a[i]);
+    }
+    return c / b;
+  }
+
+  tokenProperties.forEach((element) => {
+    tokenTraitsPercent.push(element.trait_rarity);
+  });
+
+  averageRarityScore = numAverage(tokenTraitsPercent);
+  return averageRarityScore;
+}
+
+let rarestTraitFinal = [];
+
+function rarestTraitCheck(traitsArray) {
+  let rarestTrait = Math.min(...tokenTraitsPercent);
+
+  for (let i = 0; i < traitsArray.length; i++) {
+    if (rarestTrait == traitsArray[i].trait_rarity) {
+      rarestTraitFinal.push(traitsArray[i]);
+      return rarestTraitFinal;
+    }
+  }
+}
+
+let statisticalRarityScore = 1;
+
+function statisticalRarity() {
+  statisticalRarityScore = tokenTraitsPercent.reduce((a, b) => a * b, 1);
+  return statisticalRarityScore;
+}
+
+// async function main() {
+//   await traitsListing();
+//   await checkToken(id);
+
+//   await compare(tokenTraits);
+
+//   await averageRarity(traitsArray);
+
+//   await rarestTraitCheck(traitsArray);
+
+//   await statisticalRarity();
+
+//   let tokenInfo = {
+//     attributes: traitsArray,
+//     ARS: averageRarityScore,
+//     SRS: statisticalRarityScore,
+//     rarestTrait: rarestTraitFinal[0],
+//   };
+
+//   console.log(`Token ${id}`, tokenInfo);
+// }
