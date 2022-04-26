@@ -5550,6 +5550,17 @@ function fixResponseChunkedTransferBadEnding(request, errorCallback) {
   });
 }
 
+// src/rarestTrait.ts
+function rarestTraitCheck(traitsArray) {
+  let rarestTrait = Math.min(...tokenTraitsPercent);
+  for (let i2 = 0; i2 < traitsArray.length; i2++) {
+    if (rarestTrait == traitsArray[i2].trait_rarity) {
+      rarestTraitFinal.push(traitsArray[i2]);
+      return rarestTraitFinal;
+    }
+  }
+}
+
 // src/http/post-collection/index.ts
 async function fetchToken(id) {
   try {
@@ -5617,7 +5628,7 @@ async function compare(tokenTraits) {
   return newTraits;
 }
 var averageRarityScore = 1;
-var tokenTraitsPercent = [];
+var tokenTraitsPercent2 = [];
 function averageRarity(tokenProperties) {
   function numAverage(a) {
     var b = a.length, c = 0, i2;
@@ -5627,24 +5638,14 @@ function averageRarity(tokenProperties) {
     return c / b;
   }
   tokenProperties.forEach((element) => {
-    tokenTraitsPercent.push(element.trait_rarity);
+    tokenTraitsPercent2.push(element.trait_rarity);
   });
-  averageRarityScore = numAverage(tokenTraitsPercent);
+  averageRarityScore = numAverage(tokenTraitsPercent2);
   return averageRarityScore;
-}
-var rarestTraitFinal = [];
-function rarestTraitCheck(traitsArray) {
-  let rarestTrait = Math.min(...tokenTraitsPercent);
-  for (let i2 = 0; i2 < traitsArray.length; i2++) {
-    if (rarestTrait == traitsArray[i2].trait_rarity) {
-      rarestTraitFinal.push(traitsArray[i2]);
-      return rarestTraitFinal;
-    }
-  }
 }
 var statisticalRarityScore = 1;
 function statisticalRarity() {
-  statisticalRarityScore = tokenTraitsPercent.reduce((a, b) => a * b, 1);
+  statisticalRarityScore = tokenTraitsPercent2.reduce((a, b) => a * b, 1);
   return statisticalRarityScore;
 }
 // Annotate the CommonJS export names for ESM import in node:

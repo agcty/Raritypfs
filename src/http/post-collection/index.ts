@@ -3,10 +3,10 @@ import type {
   APIGatewayProxyEventV2,
   APIGatewayProxyResultV2,
 } from "aws-lambda";
-import { Web3Storage } from "web3.storage";
 import fetch from "node-fetch";
 type LambdaHandler = Handler<APIGatewayProxyEventV2, APIGatewayProxyResultV2>;
 import { create } from "ipfs-http-client";
+import rarestTraitCheck from "../../rarestTrait";
 
 async function fetchToken(id) {
   try {
@@ -105,13 +105,6 @@ async function traitsListing(tokenTraits) {
   return collectionTraits;
 }
 
-let tokenTraits = {};
-let fullTokenTraits = [];
-
-//tokenProperties will contain the traits values as keys and their rarity % according to collectionTraits value
-
-let traitsArray = [];
-
 async function compare(tokenTraits) {
   console.log({ tokenTraits });
   // copy
@@ -148,42 +141,9 @@ function averageRarity(tokenProperties) {
 
 let rarestTraitFinal = [];
 
-function rarestTraitCheck(traitsArray) {
-  let rarestTrait = Math.min(...tokenTraitsPercent);
-
-  for (let i = 0; i < traitsArray.length; i++) {
-    if (rarestTrait == traitsArray[i].trait_rarity) {
-      rarestTraitFinal.push(traitsArray[i]);
-      return rarestTraitFinal;
-    }
-  }
-}
-
 let statisticalRarityScore = 1;
 
 function statisticalRarity() {
   statisticalRarityScore = tokenTraitsPercent.reduce((a, b) => a * b, 1);
   return statisticalRarityScore;
 }
-
-// async function main() {
-//   await traitsListing();
-//   await checkToken(id);
-
-//   await compare(tokenTraits);
-
-//   await averageRarity(traitsArray);
-
-//   await rarestTraitCheck(traitsArray);
-
-//   await statisticalRarity();
-
-//   let tokenInfo = {
-//     attributes: traitsArray,
-//     ARS: averageRarityScore,
-//     SRS: statisticalRarityScore,
-//     rarestTrait: rarestTraitFinal[0],
-//   };
-
-//   console.log(`Token ${id}`, tokenInfo);
-// }
